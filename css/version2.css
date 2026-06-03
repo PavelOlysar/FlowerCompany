@@ -41,6 +41,12 @@ html::-webkit-scrollbar { display: none; }   /* Chrome / Safari / Edge */
   position: fixed;
   z-index: 5;                      /* above photos, below nav/bottombar (z 10) */
   padding: 0 24px 0 18px;          /* Figma: title left 18px, counter right 24px */
+  /* Uniform GRAYSCALE anti-aliasing for the whole overlay. The rolling glyphs carry a GSAP
+     transform, which forces grayscale AA (lighter); without this the static " / 04" stayed
+     sub-pixel (heavier) and read as a different font weight. Smoothing everything the same
+     way makes the rolling number and the static total render identically. */
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 .hero--v2 .hero__title {
@@ -87,6 +93,7 @@ html::-webkit-scrollbar { display: none; }   /* Chrome / Safari / Edge */
   vertical-align: bottom;
   line-height: 1;
   white-space: pre;                /* keep the leading space so it reads "01 / 04" */
+  transform: translateZ(0);        /* match the rolling digits' transformed render path (same AA) */
 }
 
 /* ---------- Custom cursor: white with exclusion blend (all states) ----------
