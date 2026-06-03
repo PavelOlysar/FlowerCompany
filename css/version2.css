@@ -17,9 +17,20 @@ html {
 }
 html::-webkit-scrollbar { display: none; }   /* Chrome / Safari / Edge */
 
-/* Lighter legibility scrim than V1. */
+/* Stacked-card scroll: each photo PINS at the top and the next one slides up and
+   covers it (later sections paint over earlier ones). Sticky keeps the section's
+   100vh in-flow space, so the scroll height — and the title-roll / wrap-loop math
+   that depends on it (main.js) — are unchanged; only the paint order changes. */
+.hero--v2 {
+  position: sticky;
+  top: 0;
+}
+
+/* Lighter legibility scrim than V1, as an opacity-driven dark layer so main.js can
+   SCRUB it darker while this photo is being covered (0.25 = the original look). */
 .hero--v2 .hero__scrim {
-  background: rgba(2, 2, 8, 0.25);
+  background: #020208;
+  opacity: 0.25;
 }
 
 /* ---------- Title row: huge title left, small counter right ----------
@@ -42,19 +53,22 @@ html::-webkit-scrollbar { display: none; }   /* Chrome / Safari / Edge */
   overflow: hidden;                         /* THE clip mask — glyphs vanish past the edge, never fade */
 }
 
-/* Per-character slots (wrapped by main.js). Each glyph slides on Y; the mask clips it. */
+/* Per-character slots (wrapped by main.js). Each glyph slides on Y; the mask clips it.
+   No persistent `will-change: transform` — at rest that GPU layer anti-aliases the
+   glyphs lighter than the static " / 04", so the rolling number looked less bold. GSAP
+   adds its own will-change/3D only DURING a roll (force3D "auto") and reverts when idle,
+   so resting glyphs stay crisp and match the static counter text. */
 .hero--v2 .v2-ch {
   display: inline-block;
-  will-change: transform;
 }
 
 .hero--v2 .hero__counter {
   position: relative;
   top: 10px;                       /* Figma: counter sits ≈10px below centre */
-  font-size: 15px;
-  line-height: 22px;
+  font-size: 24px;                 /* Figma node 59-62: 1.5rem */
+  line-height: 35.2px;             /* Figma: 2.2rem (146.667%) */
   font-weight: 500;
-  letter-spacing: 0.15px;
+  letter-spacing: 0.24px;          /* Figma: 0.015rem */
   color: var(--white);
   text-align: right;
   white-space: nowrap;

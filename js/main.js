@@ -145,6 +145,7 @@
         reset(to);
         index = target;
         animating = false;
+        if (queued) { var d = queued; queued = 0; step(d); }   // run a gesture queued mid-wipe
       }
     })
       // 1) Background + card reveal seam — sweeps on the shared ease while STRAIGHTENING (see seamClip).
@@ -170,15 +171,33 @@
     go((index + dir + n) % n, dir); // wrap: 04 → 01 (down) and 01 → 04 (up)
   }
 
-  // --- Wheel (mouse + trackpad): idle-debounce so one gesture = one step ---
-  var ready = true, idle = null;
+  // One-slot queue: a gesture made DURING a transition is remembered (latest wins) and fired the
+  // instant the wipe finishes (see go's onComplete), so a quick double-flick advances two.
+  var queued = 0;
+  function request(dir) {
+    if (animating) { queued = dir; return; }
+    step(dir);
+  }
+
+  // --- Wheel (mouse + trackpad): one gesture = one step, queued during a transition ---
+  // Re-arm as soon as the gesture EASES, not after it fully stops: the velocity-ease path
+  // (|deltaY| ≤ RELEASE) re-arms a trackpad the moment its inertia weakens (the old code waited for
+  // a full stop, which the long inertia tail never reached → scrolls felt eaten), while the 80ms
+  // idle re-arms a mouse wheel between its discrete (tail-less) notches. Hysteresis between RELEASE
+  // and TRIGGER stops flapping; a decaying inertia tail can't climb back over TRIGGER once it dips
+  // below RELEASE, so one flick = one step and only a fresh flick passes the gate (and gets queued).
+  var armed = true, idle = null;
+  var TRIGGER = 8;   // min |deltaY| to count as an intentional gesture
+  var RELEASE = 4;   // |deltaY| at/below this = the gesture's inertia has eased → re-arm
   window.addEventListener("wheel", function (e) {
     e.preventDefault();
     if (idle) clearTimeout(idle);
-    idle = setTimeout(function () { ready = true; }, 120); // resets only after the gesture stops
-    if (!ready || animating || Math.abs(e.deltaY) < 8) return;
-    ready = false;
-    step(e.deltaY > 0 ? 1 : -1);
+    idle = setTimeout(function () { armed = true; }, 80);    // re-arm after a brief silence (mouse wheel)
+    var v = Math.abs(e.deltaY);
+    if (v <= RELEASE) { armed = true; return; }              // inertia eased (trackpad) → re-arm now
+    if (!armed || v < TRIGGER) return;                        // mid-gesture / too weak → ignore
+    armed = false;                                            // consume; this gesture's tail won't re-fire
+    request(e.deltaY > 0 ? 1 : -1);
   }, { passive: false });
 
   // --- Touch swipe ---
@@ -186,19 +205,18 @@
   window.addEventListener("touchstart", function (e) { startY = e.touches[0].clientY; }, { passive: true });
   window.addEventListener("touchmove", function (e) { e.preventDefault(); }, { passive: false });
   window.addEventListener("touchend", function (e) {
-    if (startY === null || animating) return;
+    if (startY === null) return;
     var dy = startY - e.changedTouches[0].clientY;
-    if (Math.abs(dy) > 40) step(dy > 0 ? 1 : -1);
+    if (Math.abs(dy) > 40) request(dy > 0 ? 1 : -1);   // queues if a wipe is in flight
     startY = null;
   }, { passive: true });
 
   // --- Keyboard ---
   window.addEventListener("keydown", function (e) {
-    if (animating) return;
     if (e.key === "ArrowDown" || e.key === "PageDown" || e.key === " " || e.key === "Spacebar") {
-      e.preventDefault(); step(1);
+      e.preventDefault(); request(1);    // queues if a wipe is in flight
     } else if (e.key === "ArrowUp" || e.key === "PageUp") {
-      e.preventDefault(); step(-1);
+      e.preventDefault(); request(-1);
     }
   });
 })();
@@ -318,6 +336,27 @@
   main.insertBefore(headClone, sections[0]);
   main.appendChild(tailClone);
 
+  // ---- Per-photo darken as the NEXT card covers it (sticky stacking, see version2.css) ----
+  // One scrubbed trigger per section (clones included, so it is seamless across the wrap). Each
+  // section is one viewport tall and stacked from the document top, so section #idx is covered by
+  // the next one over the scroll window [idx*vh, (idx+1)*vh] — drive the darken off those NUMERIC
+  // scroll positions rather than "top top"/"bottom top": a sticky trigger reports top:0 once stuck,
+  // which would mis-measure already-pinned sections. Over that window the COVERED photo fades
+  // 0.25 → 0.55 while the incoming stays bright (its own window hasn't started). Local + periodic,
+  // so it survives the wrap teleport unchanged. (Functions re-evaluate on ScrollTrigger.refresh.)
+  Array.prototype.slice.call(main.querySelectorAll(".hero--v2")).forEach(function (sec, idx) {
+    var scrim = sec.querySelector(".hero__scrim");
+    if (!scrim) return;
+    gsap.to(scrim, {
+      opacity: 0.55, ease: "none",
+      scrollTrigger: {
+        start: function () { return idx * vh(); },
+        end:   function () { return (idx + 1) * vh(); },
+        scrub: true
+      }
+    });
+  });
+
   function vh() { return window.innerHeight; }       // one section / viewport height
 
   // Project shown at each of the 6 photos → the roll sequence 3→0→1→2→3→0.
@@ -335,7 +374,11 @@
   var rollDur = GAP * CHAR_DUR + CHAR_DUR + (maxLen - 1) * STAGGER;
   var SLICE = rollDur / (1 - ROLL_AT);
   var tl = gsap.timeline({
-    defaults: { ease: EASE },
+    // force3D:false — a SCRUBBED timeline keeps its targets perpetually "animating", so GSAP's
+    // default force3D:"auto" leaves a translate3d (GPU layer) on the chars even at rest, which
+    // anti-aliases the rolling number lighter than the static " / 04". 2D transforms render crisp
+    // and match. (CSS will-change was also dropped from .v2-ch; the layer came from GSAP itself.)
+    defaults: { ease: EASE, force3D: false },
     scrollTrigger: { start: 0, end: "max", scrub: SCRUB }
   });
   for (var i = 0; i < SEQ.length - 1; i++) {
@@ -358,16 +401,32 @@
     gsap.ticker.add(function (time) { lenis.raf(time * 1000); });
     gsap.ticker.lagSmoothing(0);
 
-    // Guard: don't wrap until we've settled on the start photo — otherwise Lenis's initial
-    // scroll≈0 event would trip the y<=1 up-wrap and jump us straight to project 04 on load.
+    // Momentum-preserving wrap. Teleport from the MIDDLE of the buffer photo (half a viewport
+    // in), not the hard scroll edge: the loop is seamless for any y in the buffer (state at y ===
+    // state at y±N*vh), so waiting for the edge only hurt — Lenis clamps scroll to [0,max], so
+    // reaching the very top/bottom killed the inertial momentum against the wall before the jump.
+    // Half a viewport of runway now stays on BOTH sides of every teleport. We DON'T use
+    // lenis.scrollTo({immediate:true}) — that calls reset() and zeroes velocity, which is the
+    // "slowdown" felt at every seam. Instead we offset animatedScroll AND targetScroll by the same
+    // delta: the lerp gap is untouched, so next frame's velocity (animatedScroll − prev) is
+    // unchanged and momentum carries straight through. setScroll() applies it to window.scrollY at
+    // once (same call Lenis's own immediate path uses). Direction-guarded so the landing — which
+    // sits on the opposite threshold — can't immediately re-trip.
+    function wrapBy(d) {
+      lenis.animatedScroll += d;
+      lenis.targetScroll  += d;
+      lenis.setScroll(lenis.scroll);
+      ScrollTrigger.update();
+    }
     var loopReady = false;
     lenis.on("scroll", function () {
       ScrollTrigger.update();
       if (!loopReady) return;
       var y = window.scrollY || window.pageYOffset || 0;
       var max = ScrollTrigger.maxScroll(window);
-      if (y >= max - 1)  lenis.scrollTo(y - N * vh(), { immediate: true });   // past P0' → real P0
-      else if (y <= 1)   lenis.scrollTo(y + N * vh(), { immediate: true });   // past P3' → real P3
+      var half = vh() / 2;
+      if (lenis.direction < 0 && y <= half)            wrapBy(+N * vh());   // up past P0 → real P3 (04)
+      else if (lenis.direction > 0 && y >= max - half) wrapBy(-N * vh());   // down past P3 → real P0 (01)
     });
     lenis.scrollTo(vh(), { immediate: true });
     requestAnimationFrame(function () { requestAnimationFrame(function () { loopReady = true; }); });
