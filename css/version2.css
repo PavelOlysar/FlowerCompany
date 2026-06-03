@@ -1,0 +1,64 @@
+/* ==========================================================================
+   Flower Company — version2.css  ("v02-full-photo")
+   Full-bleed photo · huge title · light scrim · small right-aligned counter ·
+   blend-mode "Zobrazit projekt" badge on state 1.
+   (The magenta "radius" outline in the Figma frame is a designer annotation
+   and is intentionally omitted.)
+   ========================================================================== */
+
+/* Scroll-snap review behaviour (V2 only for now; V1 uses Lenis smooth scroll).
+   TEMPORARY: will be replaced when V2 gets its own scroll animation. */
+html {
+  scroll-snap-type: y mandatory;
+  scroll-behavior: smooth;
+}
+.hero--v2 {
+  scroll-snap-align: start;
+}
+
+/* Lighter legibility scrim than V1. */
+.hero--v2 .hero__scrim {
+  background: rgba(2, 2, 8, 0.25);
+}
+
+/* ---------- Title row: huge title left, small counter right ---------- */
+.hero--v2 .hero__titlerow {
+  padding: 0 24px 0 18px;          /* Figma: title left 18px, counter right 24px */
+}
+
+.hero--v2 .hero__title {
+  font-size: clamp(44px, 5.55vw, 80px);   /* 80px @1440 */
+  line-height: 0.9875;                      /* ≈ 79/80 */
+  font-weight: 500;
+  letter-spacing: -0.01em;                  /* ≈ -0.8px @80px */
+  color: var(--white);
+  white-space: nowrap;
+}
+
+.hero--v2 .hero__counter {
+  position: relative;
+  top: 10px;                       /* Figma: counter sits ≈10px below centre */
+  font-size: 15px;
+  line-height: 22px;
+  font-weight: 500;
+  letter-spacing: 0.15px;
+  color: var(--white);
+  text-align: right;
+}
+
+/* ---------- Custom cursor: white with exclusion blend (all states) ----------
+   The dot is a top-level element (see base.css), so the blend inverts the photo. */
+.v2 .cursor-dot {
+  background: #fff;
+  mix-blend-mode: exclusion;       /* inverts against the photo, as in Figma */
+}
+
+/* Invisible hover zone matching the rounded "radius" region (Figma node 64:1966),
+   shrunk ~10%: the big "Zobrazit projekt" cursor activates only inside it; outside
+   it the cursor stays the small default size (same as V1). */
+.hero--v2 .radius-zone {
+  position: absolute;
+  inset: 16.5% 13% 17.4% 12%;      /* top right bottom left — ~10% smaller than the frame radius */
+  border-radius: 180px;
+  z-index: 1;
+}

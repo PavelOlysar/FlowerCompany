@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Flower Company — Verze 2</title>
+
+  <!-- DM Sans (variable, opsz 9–40, weights 400 & 500) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="css/base.css">
+  <link rel="stylesheet" href="css/version2.css">
+</head>
+<body class="v2">
+
+  <!-- ===== Shared chrome: fixed top nav ===== -->
+  <header class="nav">
+    <a class="nav__logo" href="#" aria-label="Flower Company">
+      <img src="assets/svg/logo.svg" alt="Flower Company">
+    </a>
+
+    <nav class="nav__menu" aria-label="Hlavní navigace">
+      <div class="nav__col">
+        <a href="#">Zelené stěny</a>
+        <a href="#">Interiérová zeleň</a>
+        <a href="#">Mechové stěny</a>
+        <a href="#">Servis a péče</a>
+        <a href="#">Návrh a konzultace</a>
+      </div>
+      <div class="nav__col">
+        <a href="#">O nás</a>
+        <a href="#">Novinky</a>
+        <a href="#">Showroom</a>
+      </div>
+      <div class="nav__col">
+        <a href="#">Realizace</a>
+        <a href="version1.html" class="nav__version">Version 1</a>
+        <a href="version2.html" class="nav__version is-active">Version 2</a>
+      </div>
+      <div class="nav__col">
+        <a href="#">Kontakt</a>
+      </div>
+    </nav>
+
+    <div class="nav__lang">
+      <span>English</span>
+      <span>Deutsch</span>
+    </div>
+  </header>
+
+  <!-- ===== States 1–4 (stacked full-screen sections) ===== -->
+  <main>
+    <!-- State 1 — MOL -->
+    <section class="hero hero--v2" data-state="1">
+      <img class="hero__photo" src="assets/img/mol.png" alt="MOL">
+      <div class="hero__scrim"></div>
+      <div class="radius-zone"></div>
+      <div class="hero__titlerow">
+        <h2 class="hero__title">MOL</h2>
+        <span class="hero__counter">01 / 04</span>
+      </div>
+    </section>
+
+    <!-- State 2 — Jindřišská 16 -->
+    <section class="hero hero--v2" data-state="2">
+      <img class="hero__photo" src="assets/img/jindrisska.png" alt="Jindřišská 16">
+      <div class="hero__scrim"></div>
+      <div class="radius-zone"></div>
+      <div class="hero__titlerow">
+        <h2 class="hero__title">Jindřišská 16</h2>
+        <span class="hero__counter">02 / 04</span>
+      </div>
+    </section>
+
+    <!-- State 3 — Hotel Sněžník -->
+    <section class="hero hero--v2" data-state="3">
+      <img class="hero__photo" src="assets/img/hotel-sneznik.png" alt="Hotel Sněžník">
+      <div class="hero__scrim"></div>
+      <div class="radius-zone"></div>
+      <div class="hero__titlerow">
+        <h2 class="hero__title">Hotel Sněžník</h2>
+        <span class="hero__counter">03 / 04</span>
+      </div>
+    </section>
+
+    <!-- State 4 — Prague City Golf -->
+    <section class="hero hero--v2" data-state="4">
+      <img class="hero__photo" src="assets/img/prague-city-golf.png" alt="Prague City Golf">
+      <div class="hero__scrim"></div>
+      <div class="radius-zone"></div>
+      <div class="hero__titlerow">
+        <h2 class="hero__title">Prague City Golf</h2>
+        <span class="hero__counter">04 / 04</span>
+      </div>
+    </section>
+  </main>
+
+  <!-- ===== Shared chrome: fixed bottom bar ===== -->
+  <footer class="bottombar">
+    <p class="bottombar__caption">Interiérová zeleň navržená<br>pro dlouhodobé fungování</p>
+    <div class="bottombar__all">
+      <span class="flower-icon" aria-hidden="true">
+        <span class="flower-icon__leaf l3"><img src="assets/svg/leaf-3.svg" alt=""></span>
+        <span class="flower-icon__leaf l1"><img src="assets/svg/leaf-1.svg" alt=""></span>
+        <span class="flower-icon__leaf l4"><img src="assets/svg/leaf-4.svg" alt=""></span>
+        <span class="flower-icon__leaf l2"><img src="assets/svg/leaf-2.svg" alt=""></span>
+      </span>
+      <span>Všechny Realizace</span>
+    </div>
+  </footer>
+
+  <!-- Custom cursor (follows mouse; white + exclusion blend in V2). Two top-level
+       elements so the dot can mix-blend with the page. -->
+  <span class="cursor-dot" aria-hidden="true"></span>
+  <span class="cursor-text" aria-hidden="true"><span>Zobrazit<br>projekt</span></span>
+
+  <!-- GSAP + ScrollTrigger ready for the animation pass (currently inert) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
+  <script src="js/main.js"></script>
+</body>
+</html>

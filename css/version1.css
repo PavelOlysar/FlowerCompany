@@ -1,0 +1,105 @@
+/* ==========================================================================
+   Flower Company — version1.css  ("v01-miniatura")
+   Small title · centred "window" image (peek-through) · dark scrim ·
+   green cursor. Scroll-jacked one-project-at-a-time transitions (see main.js).
+   ========================================================================== */
+
+/* ---------- V1 stage: one project on screen at a time (scroll-jacked) ----------
+   Sections overlap as layers inside a fixed full-screen stage; the page itself
+   does not scroll. main.js wipes between them. */
+body.v1 {
+  overflow: hidden;
+  height: 100vh;
+}
+.v1 main {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+}
+.hero--v1 {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  visibility: hidden;          /* only shown layers paint */
+  pointer-events: none;
+}
+.hero--v1.is-shown { visibility: visible; }            /* current + the one transitioning in */
+.hero--v1.is-current { pointer-events: auto; z-index: 1; }
+
+/* Background layer (photo + scrim): a single overflow-hidden clip target for the
+   bottom→up wipe. */
+.hero--v1 .hero__bg {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+}
+
+/* Dark legibility scrim (heavier than V2). */
+.hero--v1 .hero__scrim {
+  background: rgba(2, 2, 8, 0.4);
+}
+
+/* ---------- Title row: small title left, matching counter right ---------- */
+.hero--v1 .hero__titlerow {
+  padding: 0 32px;                 /* Figma: title left 32px, counter right 32px */
+}
+
+.hero--v1 .hero__title,
+.hero--v1 .hero__counter {
+  font-size: clamp(26px, 2.36vw, 34px);   /* 34px @1440 */
+  line-height: 1.12;                       /* ≈ 38/34 */
+  font-weight: 500;
+  letter-spacing: -0.01em;                 /* ≈ -0.34px @34px */
+  color: var(--white);
+}
+
+.hero--v1 .hero__counter { text-align: right; }
+
+/* ---------- Clip-masked line wipe (title + active counter number) ----------
+   Each line is wrapped (by main.js) in an overflow:hidden mask; the inner span
+   slides vertically (translateY ±100%) so glyphs are clipped as they wipe. The
+   inner's line box is roomy so Czech diacritics (ř š ě ž) aren't clipped at rest. */
+.hero--v1 .ln { display: block; overflow: hidden; }
+.hero--v1 .num { display: inline-block; overflow: hidden; vertical-align: bottom; }
+.hero--v1 .ln-in,
+.hero--v1 .num-in {
+  display: block;
+  line-height: 1.3;            /* room for diacritics; translateY 100% = this height */
+  will-change: transform;
+}
+.hero--v1 .cnt-rest {          /* the static " / 04" — never animated */
+  display: inline-block;
+  line-height: 1.3;
+  vertical-align: bottom;
+  white-space: pre;            /* keep the leading space so it reads "01 / 04", not "01/ 04" */
+}
+
+/* ---------- Centred "window" — same photo, NO scrim (shows brighter crop) ---
+   Foreground card; clipped top→down on transition (opposite of the bg). */
+.hero--v1 .hero__window {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: min(454px, 38vw);
+  aspect-ratio: 454 / 303;
+  margin: 0;
+  z-index: 1;                       /* above the scrim, so it reads bright */
+}
+
+.hero--v1 .hero__window-img {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+}
+
+.hero--v1 .hero__window-img img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+}
+
+/* ---------- Custom cursor: solid brand green (all states) ---------- */
+.v1 .cursor-dot { background: var(--badge-green); }

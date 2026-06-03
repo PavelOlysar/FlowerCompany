@@ -1,0 +1,272 @@
+/* ==========================================================================
+   Flower Company — base.css
+   Shared foundation for both layout versions:
+   reset · fonts · design tokens · shared chrome (top nav + bottom bar) ·
+   full-screen section scaffold.
+   Version-specific styling lives in version1.css / version2.css.
+   ========================================================================== */
+
+/* ---------- Reset ---------- */
+*,
+*::before,
+*::after { box-sizing: border-box; }
+
+html, body { margin: 0; padding: 0; }
+
+img { display: block; max-width: 100%; }
+
+a { color: inherit; text-decoration: none; }
+
+ul { margin: 0; padding: 0; list-style: none; }
+
+/* ---------- Design tokens (from Figma) ---------- */
+:root {
+  --white: #ffffff;
+  --black: #000000;
+  --badge-green: #afbf4f;
+  --frame-fallback: #dddddd;
+
+  --margin: 24px;          /* outer page margin */
+  --nav-top: 19px;         /* nav distance from top */
+  --bar-bottom: 37px;      /* bottom bar distance from bottom */
+
+  --font: "DM Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+
+/* ---------- Base typography ----------
+   DM Sans variable font. Optical size is pinned to 14 (as in Figma) for ALL
+   sizes; font-weight then controls the weight axis normally (400 / 500). */
+body {
+  font-family: var(--font);
+  font-variation-settings: "opsz" 14;
+  font-weight: 400;
+  color: var(--white);
+  background: var(--frame-fallback);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* ---------- Scroll container ----------
+   The 4 states are stacked as full-screen sections.
+   Scroll behaviour is per version: V1 uses Lenis smooth/inertia scroll (no snap,
+   see version1.css + main.js); V2 keeps CSS scroll-snap (see version2.css). */
+html {
+  background: #000;
+}
+
+/* ==========================================================================
+   FULL-SCREEN SECTION SCAFFOLD
+   ========================================================================== */
+.hero {
+  position: relative;
+  width: 100%;
+  height: 100vh;
+  overflow: hidden;
+}
+
+.hero__photo {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+}
+
+/* Dark legibility scrim over the photo (opacity set per version). */
+.hero__scrim {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+/* Title + counter row, vertically centred in the section.
+   Horizontal padding (left/right) is overridden per version. */
+.hero__titlerow {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 var(--margin);
+  z-index: 2;
+  pointer-events: none;
+}
+
+.hero__title { margin: 0; font-weight: 500; }
+.hero__counter { white-space: nowrap; }
+
+/* ==========================================================================
+   SHARED CHROME — fixed top nav (one instance overlays all sections)
+   ========================================================================== */
+.nav {
+  position: fixed;
+  top: var(--nav-top);
+  left: 0;
+  right: 0;
+  z-index: 10;
+  display: flex;
+  align-items: flex-start;
+  padding: 0 var(--margin);
+}
+
+.nav__logo { margin-right: auto; }          /* pushes menu + lang to the right */
+.nav__logo img { height: 42px; width: auto; }
+
+.nav__menu {
+  display: flex;
+  gap: 50px;
+  margin-right: 100px;                       /* gap before the language switch */
+}
+
+.nav__col { display: flex; flex-direction: column; }
+
+/* Link style shared by nav columns, language switch and "Všechny Realizace". */
+.nav a,
+.nav__lang span,
+.bottombar__all {
+  font-size: 15px;
+  line-height: 22px;
+  font-weight: 500;
+  letter-spacing: 0.15px;
+  color: var(--white);
+}
+
+.nav__lang { display: flex; flex-direction: column; }
+
+/* Version switcher links (below "Realizace"); current page is underlined. */
+.nav__version.is-active { text-decoration: underline; text-underline-offset: 3px; }
+
+/* ==========================================================================
+   SHARED CHROME — fixed bottom bar
+   ========================================================================== */
+.bottombar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: var(--bar-bottom);
+  z-index: 10;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  padding: 0 var(--margin);
+}
+
+.bottombar__caption {
+  margin: 0;
+  font-size: 22px;
+  line-height: 26px;
+  font-weight: 400;
+  color: var(--white);
+}
+
+.bottombar__all {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* 4-leaf flower icon (Figma node 64:2050): four small leaves arranged 2×2 with
+   rotations, ~16×16. Leaves are black in the source SVGs, forced white here. */
+.flower-icon {
+  position: relative;
+  width: 16.06px;
+  height: 16px;
+  flex: none;
+}
+.flower-icon__leaf {
+  position: absolute;
+  width: 8.322px;
+  height: 8.322px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.flower-icon__leaf img {
+  width: 4.374px;
+  height: 7.395px;
+  display: block;
+  filter: brightness(0) invert(1);   /* leaf source is black → render white */
+}
+.flower-icon .l3 { left: 0;      top: 0; }       /* top-left    */
+.flower-icon .l1 { left: 7.74px; top: 0; }       /* top-right   */
+.flower-icon .l4 { left: 0;      top: 7.68px; }  /* bottom-left */
+.flower-icon .l2 { left: 7.74px; top: 7.68px; }  /* bottom-right*/
+.flower-icon .l1 img { transform: rotate(45deg); }
+.flower-icon .l2 img { transform: rotate(-45deg) scaleY(-1); }
+.flower-icon .l3 img { transform: rotate(135deg) scaleY(-1); }
+.flower-icon .l4 img { transform: rotate(-135deg); }
+
+/* ==========================================================================
+   CUSTOM CURSOR — "kurzor" (follows the mouse; JS-driven, see main.js)
+   Two TOP-LEVEL elements (direct children of <body>) so the dot can
+   mix-blend with the page in V2 — a transformed/fixed wrapper would isolate
+   the blend. Size states are toggled via body.cursor-link / body.cursor-project.
+   Colour is per version (V1 green / V2 white + exclusion) in version*.css.
+   ========================================================================== */
+.cursor-dot,
+.cursor-text {
+  position: fixed;
+  left: 0;
+  top: 0;
+  pointer-events: none;
+}
+
+.cursor-dot {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  z-index: 9999;
+  transition: width 0.25s ease, height 0.25s ease;
+}
+
+.cursor-text {
+  width: 104px;
+  height: 104px;
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.cursor-text > span {
+  transform: rotate(-15deg);
+  font-size: 15px;
+  line-height: 14px;
+  font-weight: 500;
+  letter-spacing: 0.15px;
+  text-align: center;
+  color: var(--black);
+}
+
+/* Size states (set on <body> by main.js). */
+body.cursor-link .cursor-dot    { width: 20px;  height: 20px; }
+body.cursor-project .cursor-dot { width: 104px; height: 104px; }
+body.cursor-project .cursor-text { opacity: 1; }
+
+/* Link hover: the link dims to 50% (Figma node 59:203). */
+.nav a,
+.nav__lang span,
+.bottombar__all { transition: opacity 0.2s ease; }
+
+.nav a:hover,
+.nav__lang span:hover,
+.bottombar__all:hover { opacity: 0.5; }
+
+/* Hide the native pointer everywhere (incl. links' default hand) when a fine
+   pointer exists — only the custom circle shows. JS also guards. */
+@media (pointer: fine) {
+  body,
+  body * { cursor: none; }
+}
+
+/* Small screens: keep the chrome from crowding. The design target is desktop
+   (Figma frame is 1440 wide); this is a graceful fallback, not a mobile design. */
+@media (max-width: 1100px) {
+  .nav__menu { gap: 32px; margin-right: 48px; }
+}
