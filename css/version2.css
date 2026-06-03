@@ -9,6 +9,14 @@
 /* V2 scrolls FREELY and continuously — no snap, no scroll-lock. Lenis (main.js)
    owns the smoothing; ScrollTrigger scrubs the per-character title/counter roll. */
 
+/* Hide the native scrollbar — Lenis drives the scroll, so the bar isn't needed.
+   (version2.css only loads on V2, so this stays scoped to V2.) */
+html {
+  scrollbar-width: none;          /* Firefox */
+  -ms-overflow-style: none;       /* old Edge/IE */
+}
+html::-webkit-scrollbar { display: none; }   /* Chrome / Safari / Edge */
+
 /* Lighter legibility scrim than V1. */
 .hero--v2 .hero__scrim {
   background: rgba(2, 2, 8, 0.25);
