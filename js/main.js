@@ -320,29 +320,21 @@
   }
 
   // ---- Seamless WRAP-AROUND loop (01 ⇄ 04 both ways) ----
-  // The page is a finite scroll, so to loop we add a PHOTO buffer at each end (photos only — the
-  // title overlay stays the original four). The strip becomes [P2' P3' P0 P1 P2 P3 P0' P1'] and the
-  // title rolls 2→3→0→1→2→3→0→1 across it. We start on the real P0 and, near each clone end,
-  // teleport the scroll by the real 4-photo height — landing on the identical real photo two photos
-  // in (an interior rest, not a scroll edge), so it loops forever with no visible seam (see the
-  // TWO-photo-buffer rationale below).
+  // The page is a finite scroll, so to loop we add a PHOTO buffer at each end: clone the last
+  // project's photo before the first section and the first project's photo after the last
+  // (photos only — the title overlay stays the original four). The strip becomes
+  // [P3' P0 P1 P2 P3 P0'] and the title rolls 3→0→1→2→3→0 across it. We start on P0 and, at the
+  // two clone ends, teleport the scroll by the real 4-photo height — landing on the identical
+  // real photo, so it loops forever with no visible seam.
   var N = projects.length;
   var main = sections[0].parentNode;
-  // TWO-photo buffer each end so BOTH wrap teleports land on an INTERIOR real-P0 rest with a full
-  // viewport of runway to either scroll edge. (Lenis clamps [0,max] and kills momentum at the very
-  // edge; a single-photo buffer forced the down-wrap's only seamless landing onto that edge, so the
-  // code had to teleport mid-roll instead — the cause of the half-rolled text + low-speed "bump".)
-  // Strip = [P2' P3' P0 P1 P2 P3 P0' P1']: head buffer [P2,P3] (the two photos preceding P0 in the
-  // loop), tail buffer [P0,P1] (the two following P3). Inserted in document order so SEQ stays chronological.
-  var headClones = [sections[N - 2].cloneNode(true),   // P2' — outer top buffer
-                    sections[N - 1].cloneNode(true)];  // P3' — inner top buffer (just above P0)
-  var tailClones = [sections[0].cloneNode(true),       // P0' — inner bottom buffer (just below P3)
-                    sections[1].cloneNode(true)];      // P1' — outer bottom buffer
-  headClones.concat(tailClones).forEach(function (c) {
+  var headClone = sections[N - 1].cloneNode(true);   // P3 photo — top buffer (scroll up past P0)
+  var tailClone = sections[0].cloneNode(true);       // P0 photo — bottom buffer (scroll down past P3)
+  [headClone, tailClone].forEach(function (c) {
     var tr = c.querySelector(".hero__titlerow"); if (tr) tr.remove();   // buffers are photo-only
   });
-  headClones.forEach(function (c) { main.insertBefore(c, sections[0]); });   // [P2', P3'] before P0
-  tailClones.forEach(function (c) { main.appendChild(c); });                 // [P0', P1'] after P3
+  main.insertBefore(headClone, sections[0]);
+  main.appendChild(tailClone);
 
   // ---- Per-photo darken as the NEXT card covers it (sticky stacking, see version2.css) ----
   // One scrubbed trigger per section (clones included, so it is seamless across the wrap). Each
@@ -367,11 +359,9 @@
 
   function vh() { return window.innerHeight; }       // one section / viewport height
 
-  // Project shown at each of the 8 photos (two-photo buffers): [P2 P3 | P0 P1 P2 P3 | P0 P1] →
-  // the roll sequence 2→3→0→1→2→3→0→1. Chronological so the single scrubbed timeline captures
-  // every transition's start value in order.
-  var SEQ = [N - 2, N - 1]; for (var s = 0; s < N; s++) SEQ.push(s); SEQ.push(0); SEQ.push(1);
-  // Baseline = the FIRST photo's project (P2) shown, the rest parked, so the scrubbed timeline
+  // Project shown at each of the 6 photos → the roll sequence 3→0→1→2→3→0.
+  var SEQ = [N - 1]; for (var s = 0; s < N; s++) SEQ.push(s); SEQ.push(0);
+  // Baseline = the FIRST photo's project (P3) shown, the rest parked, so the scrubbed timeline
   // captures every transition's start value correctly (it's chronological in one timeline).
   projects.forEach(function (p, j) { gsap.set(chars(j), { yPercent: j === SEQ[0] ? 0 : DIST }); });
 
@@ -401,10 +391,9 @@
   }
   tl.set({}, {}, (SEQ.length - 1) * SLICE);                        // pad the final hold to equal scroll
 
-  // Start on the real P0 (TWO photos past the top buffer = y 2*vh); don't let the browser restore a
-  // stale position — a restored y would desync the loop.
+  // Start on P0 (one photo past the top buffer); don't let the browser restore a stale position.
   if (window.history && history.scrollRestoration) history.scrollRestoration = "manual";
-  window.scrollTo(0, 2 * vh());
+  window.scrollTo(0, vh());
 
   // ---- Lenis smoothing + the wrap teleport ----
   if (window.Lenis) {
@@ -412,15 +401,17 @@
     gsap.ticker.add(function (time) { lenis.raf(time * 1000); });
     gsap.ticker.lagSmoothing(0);
 
-    // Momentum-preserving wrap. The loop is seamless for any y in the buffer (state at y === state
-    // at y±N*vh), and with two-photo buffers we trigger one full photo IN from each edge, so a full
-    // viewport of runway stays on BOTH sides of every teleport — Lenis clamps scroll to [0,max], so
-    // triggering at the very edge would kill the inertial momentum against the wall before the jump.
-    // We DON'T use lenis.scrollTo({immediate:true}) — that calls reset() and zeroes velocity, which
-    // is the "slowdown" felt at every seam. Instead we offset animatedScroll AND targetScroll by the
-    // same delta: the lerp gap is untouched, so next frame's velocity (animatedScroll − prev) is
+    // Momentum-preserving wrap. Teleport from the MIDDLE of the buffer photo (half a viewport
+    // in), not the hard scroll edge: the loop is seamless for any y in the buffer (state at y ===
+    // state at y±N*vh), so waiting for the edge only hurt — Lenis clamps scroll to [0,max], so
+    // reaching the very top/bottom killed the inertial momentum against the wall before the jump.
+    // Half a viewport of runway now stays on BOTH sides of every teleport. We DON'T use
+    // lenis.scrollTo({immediate:true}) — that calls reset() and zeroes velocity, which is the
+    // "slowdown" felt at every seam. Instead we offset animatedScroll AND targetScroll by the same
+    // delta: the lerp gap is untouched, so next frame's velocity (animatedScroll − prev) is
     // unchanged and momentum carries straight through. setScroll() applies it to window.scrollY at
-    // once (same call Lenis's own immediate path uses).
+    // once (same call Lenis's own immediate path uses). Direction-guarded so the landing — which
+    // sits on the opposite threshold — can't immediately re-trip.
     function wrapBy(d) {
       lenis.animatedScroll += d;
       lenis.targetScroll  += d;
@@ -428,30 +419,16 @@
       ScrollTrigger.update();
     }
     var loopReady = false;
-    // With TWO-photo buffers the seamless teleport pairs are the two INTERIOR real-P0 rests:
-    //   up-wrap   from y≈1*vh (one photo into the top buffer)     → land y≈5*vh  (+N*vh, clean P3/04 rest)
-    //   down-wrap from y≈max−1*vh (one photo into the bottom buf) → land y≈2*vh  (−N*vh, clean P0/01 rest)
-    // Each landing sits at a slice boundary (text fully at rest, never frozen mid-roll) with a full
-    // viewport of runway to the nearest edge, so momentum carries through like an interior swap. The
-    // landings (5*vh / 2*vh) are a full vh from the OPPOSITE trigger (max−1*vh / 1*vh), so the old
-    // "land exactly on the other threshold → low-speed jitter ping-pong" can't happen. `armed` is
-    // belt-and-suspenders: after a teleport, suppress BOTH wraps until y returns to the safe interior
-    // band, so sub-pixel lerp noise at the seam still can't re-trip.
-    var armed = true;
     lenis.on("scroll", function () {
       ScrollTrigger.update();
       if (!loopReady) return;
       var y = window.scrollY || window.pageYOffset || 0;
       var max = ScrollTrigger.maxScroll(window);
-      var one = vh();
-      if (!armed) {                                              // re-arm only well inside the loop
-        if (y >= 1.5 * one && y <= max - 1.5 * one) armed = true;
-        return;
-      }
-      if (lenis.direction < 0 && y <= one)            { wrapBy(+N * one); armed = false; }   // up past P0 → P3 (04)
-      else if (lenis.direction > 0 && y >= max - one) { wrapBy(-N * one); armed = false; }   // down past P3 → P0 (01)
+      var half = vh() / 2;
+      if (lenis.direction < 0 && y <= half)            wrapBy(+N * vh());   // up past P0 → real P3 (04)
+      else if (lenis.direction > 0 && y >= max - half) wrapBy(-N * vh());   // down past P3 → real P0 (01)
     });
-    lenis.scrollTo(2 * vh(), { immediate: true });   // real P0 sits two photos in now
+    lenis.scrollTo(vh(), { immediate: true });
     requestAnimationFrame(function () { requestAnimationFrame(function () { loopReady = true; }); });
   }
 
