@@ -6,33 +6,38 @@
    and is intentionally omitted.)
    ========================================================================== */
 
-/* Scroll-snap review behaviour (V2 only for now; V1 uses Lenis smooth scroll).
-   TEMPORARY: will be replaced when V2 gets its own scroll animation. */
-html {
-  scroll-snap-type: y mandatory;
-  scroll-behavior: smooth;
-}
-.hero--v2 {
-  scroll-snap-align: start;
-}
+/* V2 scrolls FREELY and continuously — no snap, no scroll-lock. Lenis (main.js)
+   owns the smoothing; ScrollTrigger scrubs the per-character title/counter roll. */
 
 /* Lighter legibility scrim than V1. */
 .hero--v2 .hero__scrim {
   background: rgba(2, 2, 8, 0.25);
 }
 
-/* ---------- Title row: huge title left, small counter right ---------- */
+/* ---------- Title row: huge title left, small counter right ----------
+   FIXED, persistent overlay: the four sections' title rows overlap here at screen
+   centre, and the title/counter roll-swap between projects (main.js) while the
+   photos scroll behind. `.hero` has no transform, so this fixed child escapes it. */
 .hero--v2 .hero__titlerow {
+  position: fixed;
+  z-index: 5;                      /* above photos, below nav/bottombar (z 10) */
   padding: 0 24px 0 18px;          /* Figma: title left 18px, counter right 24px */
 }
 
 .hero--v2 .hero__title {
   font-size: clamp(44px, 5.55vw, 80px);   /* 80px @1440 */
-  line-height: 0.9875;                      /* ≈ 79/80 */
+  line-height: 1.15;                        /* roomy so ř/š/ě/í diacritics clear the mask at rest */
   font-weight: 500;
   letter-spacing: -0.01em;                  /* ≈ -0.8px @80px */
   color: var(--white);
   white-space: nowrap;
+  overflow: hidden;                         /* THE clip mask — glyphs vanish past the edge, never fade */
+}
+
+/* Per-character slots (wrapped by main.js). Each glyph slides on Y; the mask clips it. */
+.hero--v2 .v2-ch {
+  display: inline-block;
+  will-change: transform;
 }
 
 .hero--v2 .hero__counter {
@@ -44,6 +49,22 @@ html {
   letter-spacing: 0.15px;
   color: var(--white);
   text-align: right;
+  white-space: nowrap;
+}
+/* Counter: only the number rolls (its own clip mask); the static " / 04" stays put.
+   line-height:1 on both pieces keeps the rolling number on the SAME baseline as the
+   static total (the mask's leading would otherwise drop the digits below " / 04"). */
+.hero--v2 .v2-num {
+  display: inline-block;
+  overflow: hidden;
+  vertical-align: bottom;
+  line-height: 1;                  /* the digit chars inherit this */
+}
+.hero--v2 .cnt-rest {
+  display: inline-block;
+  vertical-align: bottom;
+  line-height: 1;
+  white-space: pre;                /* keep the leading space so it reads "01 / 04" */
 }
 
 /* ---------- Custom cursor: white with exclusion blend (all states) ----------
