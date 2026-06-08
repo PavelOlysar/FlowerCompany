@@ -1,0 +1,110 @@
+/* ==========================================================================
+   Flower Company — preload.css
+   One-time intro/preload overlay (shared by V1 + V2). Loaded in <head> AFTER
+   the variant CSS. The choreography + teardown live in js/preload.js; this file
+   is the overlay skin, the pre-paint chrome guard, the scroll-lock, and the
+   reduced-motion fallback.
+   ========================================================================== */
+
+/* ---------- Pre-paint chrome guard ----------
+   `fc-intro-armed` is a STATIC class on <body> in the HTML, so the live chrome is
+   hidden before first paint (no flash). preload.js removes it on skip/reduced
+   paths and tweens these in during the handoff. The hero photo + scrim are left
+   visible underneath so the full-bleed handoff is seamless. Opacity (not display)
+   keeps layout/measurement intact so GSAP can tween them in. */
+body.fc-intro-armed .nav__logo,
+body.fc-intro-armed .nav__menu,
+body.fc-intro-armed .nav__lang,
+body.fc-intro-armed .bottombar,
+body.fc-intro-armed .fc-cookie,
+body.fc-intro-armed .hero__titlerow { opacity: 0; }
+body.fc-intro-armed .hero--v1 .hero__window { opacity: 0; }   /* V1 peek-card stays hidden; intro uses the full-bleed photo */
+
+/* ---------- Scroll lock during the intro ----------
+   V1's body is already overflow:hidden; this also pins V2's free (Lenis) scroll,
+   which preload.js defers until handoff. */
+html.fc-scroll-lock,
+body.fc-scroll-lock { overflow: hidden !important; }
+
+/* ==========================================================================
+   OVERLAY
+   ========================================================================== */
+#preload {
+  position: fixed;
+  inset: 0;
+  z-index: 2147483000;          /* above nav/bottombar (z 10) and the custom cursor (z 9999/10000) */
+  background: #ffffff;           /* Figma-exact white; preload.js overrides from the PL_BG constant */
+  overflow: hidden;
+  pointer-events: none;          /* intro never eats clicks */
+}
+
+#preload .pl-stage { position: absolute; inset: 0; }
+
+/* ---------- Logo mark (single static SVG) ----------
+   Zero-size anchor at screen centre; GSAP animates the wrapper's scale/opacity for
+   the fade-in (CSS centring isn't clobbered since the wrapper has no transform). The
+   SVG layer keeps its native aspect (size set inline by JS). `currentColor` drives
+   the fill. */
+#preload .pl-leaf {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  color: #111111;                /* leaf colour — black-on-white like the Figma exclusion blend */
+}
+#preload .pl-leaf-svg {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  display: block;
+}
+#preload .pl-leaf-svg svg { display: block; width: 100%; height: 100%; }
+
+/* ---------- Counter: thin, split to the edges, with a % sign ---------- */
+#preload .pl-counter {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 var(--margin, 24px);   /* matches the page margin */
+  color: #111111;
+  font-weight: 400;                 /* thin */
+  font-size: 14px;
+  line-height: 1;
+  letter-spacing: 0.02em;
+  font-variant-numeric: tabular-nums;   /* digits don't jitter while counting */
+}
+#preload .pl-count-num::after { content: ""; }
+
+/* ---------- Card deck ----------
+   Concentric 3:2 cards centred on screen; per-card width/height set inline by JS
+   from the Figma sizes. They scale in from 0; the front card later grows to
+   full-bleed (JS tweens width/height to 100vw/100vh, ending exactly at the real
+   .hero__photo box). */
+#preload .pl-deck { position: absolute; inset: 0; }
+#preload .pl-card {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  opacity: 0;
+  overflow: hidden;
+  border-radius: var(--pl-card-radius, 4px);
+  will-change: transform, width, height, opacity;
+}
+#preload .pl-card img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+  display: block;
+}
+
+/* ---------- Reduced motion: never show the overlay ---------- */
+@media (prefers-reduced-motion: reduce) {
+  #preload { display: none !important; }
+}

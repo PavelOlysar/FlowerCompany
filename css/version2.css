@@ -91,7 +91,8 @@ html::-webkit-scrollbar { display: none; }   /* Chrome / Safari / Edge */
 
 /* ---------- Custom cursor: white with exclusion blend (all states) ----------
    The dot is a top-level element (see base.css), so the blend inverts the photo. */
-.v2 .cursor-dot {
+.v2 .cursor-dot,
+.v3 .cursor-dot {
   background: #fff;
   mix-blend-mode: exclusion;       /* inverts against the photo, as in Figma */
 }

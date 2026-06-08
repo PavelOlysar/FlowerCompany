@@ -175,6 +175,7 @@
   // instant the wipe finishes (see go's onComplete), so a quick double-flick advances two.
   var queued = 0;
   function request(dir) {
+    if (window.FC_INTRO && window.FC_INTRO.active) return;   // ignore gestures while the intro plays
     if (animating) { queued = dir; return; }
     step(dir);
   }
@@ -233,10 +234,12 @@
    prefers-reduced-motion → no scrub; hard-swap the text at each section's midpoint. */
 (function () {
   "use strict";
-  if (!document.body.classList.contains("v2") || !window.gsap) return;
+  if ((!document.body.classList.contains("v2") && !document.body.classList.contains("v3")) || !window.gsap) return;
 
   var sections = Array.prototype.slice.call(document.querySelectorAll(".hero--v2"));
   if (sections.length < 2) return;
+
+  var isV3 = document.body.classList.contains("v3");   // V3: photos pinned, revealed by a bottom→top clip wipe
 
   /* ---- Tunable constants (durations are PROPORTIONS only — the timeline is scrubbed) ---- */
   var CHAR_DUR = 0.55;            // relative duration per char within the timeline
@@ -336,26 +339,62 @@
   main.insertBefore(headClone, sections[0]);
   main.appendChild(tailClone);
 
-  // ---- Per-photo darken as the NEXT card covers it (sticky stacking, see version2.css) ----
-  // One scrubbed trigger per section (clones included, so it is seamless across the wrap). Each
-  // section is one viewport tall and stacked from the document top, so section #idx is covered by
-  // the next one over the scroll window [idx*vh, (idx+1)*vh] — drive the darken off those NUMERIC
-  // scroll positions rather than "top top"/"bottom top": a sticky trigger reports top:0 once stuck,
-  // which would mis-measure already-pinned sections. Over that window the COVERED photo fades
-  // 0.25 → 0.55 while the incoming stays bright (its own window hasn't started). Local + periodic,
-  // so it survives the wrap teleport unchanged. (Functions re-evaluate on ScrollTrigger.refresh.)
-  Array.prototype.slice.call(main.querySelectorAll(".hero--v2")).forEach(function (sec, idx) {
-    var scrim = sec.querySelector(".hero__scrim");
-    if (!scrim) return;
-    gsap.to(scrim, {
-      opacity: 0.55, ease: "none",
-      scrollTrigger: {
-        start: function () { return idx * vh(); },
-        end:   function () { return (idx + 1) * vh(); },
-        scrub: true
-      }
+  if (isV3) {
+    // ---- V3: in-place bottom→top clip reveal (photos pinned, see version3.css) ----
+    // Photos are position:fixed and stacked by DOM order; none of them move. Each photo is
+    // revealed by scrubbing clip-path inset(top) from 100% (hidden) → 0% (full) over its NUMERIC
+    // scroll window [(idx-1)*vh, idx*vh], so the photo wipes in from the BOTTOM edge upward and
+    // sits exactly where it finally rests. State is a pure function of scroll (local + periodic),
+    // so it survives the N*vh wrap teleport seamlessly — each clone replays the identical state of
+    // the real photo it duplicates. Replaces the v2 scrim-darken; no darkening here.
+    var v3photos = Array.prototype.slice.call(main.querySelectorAll(".hero--v2"));
+    v3photos.forEach(function (sec) {
+      var photo = sec.querySelector(".hero__photo");
+      if (photo) gsap.set(photo, { clipPath: "inset(100% 0px 0px 0px)" });
     });
-  });
+    v3photos.forEach(function (sec, idx) {
+      var photo = sec.querySelector(".hero__photo");
+      if (!photo) return;
+      if (idx === 0) {
+        // Head buffer = the LAST project (Golf), sitting behind the FIRST photo. Its reveal window
+        // would be [-vh, 0] — ScrollTrigger clamps the negative start to 0, leaving a degenerate
+        // [0,0] trigger that never advances, so it stayed clipped (grey gap behind MOL). It only
+        // ever shows in [0, vh] (the top buffer, where it's the backdrop the first photo un-wipes
+        // to), so make it a permanent full backdrop. At the bottom it's covered, hence invisible.
+        gsap.set(photo, { clipPath: "inset(0px 0px 0px 0px)" });
+        return;
+      }
+      gsap.to(photo, {
+        clipPath: "inset(0px 0px 0px 0px)", ease: "none",
+        scrollTrigger: {
+          start: function () { return (idx - 1) * vh(); },
+          end:   function () { return idx * vh(); },
+          scrub: true
+        }
+      });
+    });
+  } else {
+    // ---- Per-photo darken as the NEXT card covers it (sticky stacking, see version2.css) ----
+    // One scrubbed trigger per section (clones included, so it is seamless across the wrap). Each
+    // section is one viewport tall and stacked from the document top, so section #idx is covered by
+    // the next one over the scroll window [idx*vh, (idx+1)*vh] — drive the darken off those NUMERIC
+    // scroll positions rather than "top top"/"bottom top": a sticky trigger reports top:0 once stuck,
+    // which would mis-measure already-pinned sections. Over that window the COVERED photo fades
+    // 0.25 → 0.55 while the incoming stays bright (its own window hasn't started). Local + periodic,
+    // so it survives the wrap teleport unchanged. (Functions re-evaluate on ScrollTrigger.refresh.)
+    Array.prototype.slice.call(main.querySelectorAll(".hero--v2")).forEach(function (sec, idx) {
+      var scrim = sec.querySelector(".hero__scrim");
+      if (!scrim) return;
+      gsap.to(scrim, {
+        opacity: 0.55, ease: "none",
+        scrollTrigger: {
+          start: function () { return idx * vh(); },
+          end:   function () { return (idx + 1) * vh(); },
+          scrub: true
+        }
+      });
+    });
+  }
 
   function vh() { return window.innerHeight; }       // one section / viewport height
 
@@ -392,11 +431,18 @@
   tl.set({}, {}, (SEQ.length - 1) * SLICE);                        // pad the final hold to equal scroll
 
   // Start on P0 (one photo past the top buffer); don't let the browser restore a stale position.
-  if (window.history && history.scrollRestoration) history.scrollRestoration = "manual";
-  window.scrollTo(0, vh());
+  // Split into position() (scroll + refresh) and enableLenis() so the one-time intro can DEFER
+  // go-live: position runs when the overlay reaches full-bleed (FC_INTRO.whenReveal) and Lenis
+  // starts at the hand-off (FC_INTRO.whenDone). With no intro, both run immediately (see below).
+  function position() {
+    if (window.history && history.scrollRestoration) history.scrollRestoration = "manual";
+    window.scrollTo(0, vh());
+    ScrollTrigger.refresh();
+  }
 
   // ---- Lenis smoothing + the wrap teleport ----
-  if (window.Lenis) {
+  function enableLenis() {
+    if (!window.Lenis) return;
     var lenis = new Lenis();
     gsap.ticker.add(function (time) { lenis.raf(time * 1000); });
     gsap.ticker.lagSmoothing(0);
@@ -432,7 +478,15 @@
     requestAnimationFrame(function () { requestAnimationFrame(function () { loopReady = true; }); });
   }
 
-  ScrollTrigger.refresh();
+  // Defer go-live until the intro hands off; with no intro (reduced-motion / already-seen /
+  // preload.js absent) go live immediately, preserving the original load behaviour.
+  if (window.FC_INTRO && window.FC_INTRO.willRun) {
+    window.FC_INTRO.whenReveal.then(position);
+    window.FC_INTRO.whenDone.then(enableLenis);
+  } else {
+    position();
+    enableLenis();
+  }
 })();
 
 /* ---------- Custom cursor ("kurzor") ----------

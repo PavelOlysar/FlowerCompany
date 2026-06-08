@@ -1,0 +1,44 @@
+/* ==========================================================================
+   Flower Company — version3.css  ("v03-mask-reveal")
+   v3 reuses ALL of version2.css (title/counter roll, cursor, radius styling)
+   and overrides ONLY the photo presentation: the four photos never move — they
+   sit pinned in the exact same viewport spot, stacked, and scroll scrubs a
+   bottom→top clip-path wipe that reveals the next over the one beneath (main.js
+   isV3 branch). Loaded AFTER version2.css so these rules win.
+   ========================================================================== */
+
+/* Drop v2's sticky slide — each section is now just a 100vh in-flow spacer, so
+   the scroll height (and the title-roll / wrap-loop math in main.js) is unchanged. */
+.v3 .hero--v2 {
+  position: static;
+}
+
+/* Pin every photo to the viewport, stacked by DOM order. clip-path is the ONLY
+   thing that hides/shows them (fixed escapes the section's overflow:hidden), so
+   they start fully clipped; main.js scrubs each one's top inset 100% → 0%. */
+.v3 .hero--v2 .hero__photo {
+  position: fixed;
+  inset: 0;
+  z-index: 0;                       /* below titlerow (z5) and nav/bottombar (z10) */
+  clip-path: inset(100% 0 0 0);
+  will-change: clip-path;
+}
+
+/* No darkening on the photo behind — the covered photo stays full brightness. */
+.v3 .hero--v2 .hero__scrim {
+  display: none;
+}
+
+/* Keep the "Zobrazit projekt" hover zone aligned with the now-fixed photos
+   (it's absolute-in-section for v2; same inset values read off the viewport). */
+.v3 .hero--v2 .radius-zone {
+  position: fixed;
+}
+
+/* Reduced motion: main.js returns before the reveal loop runs, so without this
+   the photos would stay clipped to blank. Show them stacked (topmost wins). */
+@media (prefers-reduced-motion: reduce) {
+  .v3 .hero--v2 .hero__photo {
+    clip-path: inset(0 0 0 0);
+  }
+}
