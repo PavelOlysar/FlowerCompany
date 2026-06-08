@@ -100,7 +100,7 @@
     var c = s.querySelector(".hero__counter");
     var m = c.textContent.trim().match(/^(\S+)([\s\S]*)$/);   // "01"  +  " / 04"
     c.innerHTML = '<span class="num"><span class="num-in">' + m[1] + "</span></span>" +
-                  '<span class="cnt-rest">' + m[2] + "</span>";
+                  '<span class="cnt-rest"><span class="cnt-rest-in">' + m[2] + "</span></span>";
     s.querySelectorAll("img").forEach(function (img) { if (img.decode) img.decode().catch(function () {}); });
   });
 
@@ -273,9 +273,11 @@
     return spans;
   }
 
-  // Per project: split the whole title into chars, and split ONLY the counter number
-  // (e.g. "01"); the " / 04" total stays static (.cnt-rest), like V1. Idempotent: the
-  // original text is stashed on first run and the spans are always rebuilt from it.
+  // Per project: split the whole title into chars, and split the counter number (e.g.
+  // "01") AND the " / 04" total — both into masked chars — so the preloader can pop the
+  // WHOLE counter in. The scroll roll, though, only rolls the number: chars(i) returns
+  // titleChars + numChars (NOT the rest chars), so " / 04" stays static between projects.
+  // Idempotent: the original text is stashed on first run and the spans always rebuilt.
   var projects = sections.map(function (s) {
     var t = s.querySelector(".hero__title");
     var c = s.querySelector(".hero__counter");
@@ -294,8 +296,8 @@
     if (m[2]) {
       var rest = document.createElement("span");
       rest.className = "cnt-rest";
-      rest.textContent = m[2];
       c.appendChild(rest);
+      splitChars(rest, m[2]);   // masked chars for the preloader pop-in; scroll roll ignores them (not in chars(i))
     }
     return { titleChars: titleChars, numChars: numChars };
   });

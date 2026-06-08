@@ -68,10 +68,15 @@ body.v1 {
   line-height: 1.3;            /* room for diacritics; translateY 100% = this height */
   will-change: transform;
 }
-.hero--v1 .cnt-rest {          /* the static " / 04" — never animated */
+.hero--v1 .cnt-rest {          /* the " / 04" total — static during scroll, masked so the preloader can pop it in */
   display: inline-block;
+  overflow: hidden;            /* clip mask for the inner's preloader reveal */
   line-height: 1.3;
   vertical-align: bottom;
+}
+.hero--v1 .cnt-rest-in {
+  display: block;
+  line-height: 1.3;            /* match .cnt-rest; translateY 100% = this height */
   white-space: pre;            /* keep the leading space so it reads "01 / 04", not "01/ 04" */
 }
 

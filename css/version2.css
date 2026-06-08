@@ -26,11 +26,12 @@ html::-webkit-scrollbar { display: none; }   /* Chrome / Safari / Edge */
   top: 0;
 }
 
-/* Lighter legibility scrim than V1, as an opacity-driven dark layer so main.js can
-   SCRUB it darker while this photo is being covered (0.25 = the original look). */
+/* No darkening while in view: the photo reads full-brightness. main.js SCRUBS this
+   scrim from 0 → 0.55 only while the photo is being COVERED by the next one, so it
+   darkens solely as it scrolls out of view (V1 stays statically dark by contrast). */
 .hero--v2 .hero__scrim {
   background: #020208;
-  opacity: 0.25;
+  opacity: 0;
 }
 
 /* ---------- Title row: huge title left, small counter right ----------
@@ -54,12 +55,14 @@ html::-webkit-scrollbar { display: none; }   /* Chrome / Safari / Edge */
 }
 
 /* Per-character slots (wrapped by main.js). Each glyph slides on Y; the mask clips it.
-   No persistent `will-change: transform` — at rest that GPU layer anti-aliases the
-   glyphs lighter than the static " / 04", so the rolling number looked less bold. GSAP
-   adds its own will-change/3D only DURING a roll (force3D "auto") and reverts when idle,
-   so resting glyphs stay crisp and match the static counter text. */
+   Persistent `will-change: transform`, same as V1's .num-in/.ln-in: it promotes EVERY
+   glyph onto an identical GPU layer — the rolling number AND the static " / 04" are both
+   .v2-ch — so they anti-alias the same and the two counter halves match. (Putting it on
+   the rolling number ALONE, back when " / 04" was a plain non-layered span, made the
+   number read lighter than the total; now both carry it, so they stay consistent.) */
 .hero--v2 .v2-ch {
   display: inline-block;
+  will-change: transform;
 }
 
 .hero--v2 .hero__counter {
@@ -84,6 +87,7 @@ html::-webkit-scrollbar { display: none; }   /* Chrome / Safari / Edge */
 }
 .hero--v2 .cnt-rest {
   display: inline-block;
+  overflow: hidden;                /* clip mask: lets the preloader pop the " / 04" chars in */
   vertical-align: bottom;
   line-height: 1;
   white-space: pre;                /* keep the leading space so it reads "01 / 04" */

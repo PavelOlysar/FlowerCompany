@@ -36,7 +36,7 @@
   /* ---------------------------------------------------------------- constants */
   // Timeline (seconds). Beat 2 is governed by COUNT_MIN; the rest are fixed.
   var LOGO_IN        = 0.4;     // leaf mark fade/scale in
-  var COUNT_MIN      = 2.2;     // MIN time for 0→100 (leaf finishes open at 100)
+  var COUNT_MIN      = 0.9;     // MIN time for 0→100 (was 2.2 → 1.3 → 0.9; leaf finishes open at 100)
   var LEAF_CLEAR     = 0.25;    // leaf + counter clear at 100
   var STACK          = 0.95;    // total card-spawn window (shortened)
   var STACK_STAGGER  = 0.075;   // per-card delay
@@ -51,12 +51,12 @@
   var HERO_IMG     = "assets/img/mol.png";   // state-1 hero — the only blocking preload
   var W_IMG        = 0.7;       // progress weight: hero image
   var W_FONT       = 0.3;       // progress weight: fonts.ready
-  var COUNT_EASE_K = 0.12;      // per-frame easing of the displayed number toward target
+  var COUNT_EASE_K = 0.16;      // per-frame easing of the displayed number toward target (was 0.12 — snappier)
   var LOAD_TIMEOUT = 8000;      // ms watchdog so the counter can never hang
 
   // Gating
-  var SHOW_ONCE = true;                 // Plays once per session; skipped on subsequent loads / version switches.
-  var SEEN_KEY  = "FC_INTRO_SEEN";      // sessionStorage flag
+  var SHOW_ONCE = true;                 // Plays on every reload + first visit; skipped only when navigating between version pages.
+  var NAV_KEY   = "FC_INTRO_NAV";       // sessionStorage flag set on a version-switch click; consumed (→ skip) by the next page
 
   // Look
   var PL_BG       = "#ffffff";  // Figma-exact white (storyboard frames are bg-white). Set a cream here if desired.
@@ -77,8 +77,20 @@
   var isV2     = body.classList.contains("v2");
   var isV3     = body.classList.contains("v3");
   var reduced  = !!(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches);
-  var seen     = SHOW_ONCE && (function () { try { return !!sessionStorage.getItem(SEEN_KEY); } catch (e) { return false; } })();
-  var willRun  = !!window.gsap && !reduced && !seen && (isV1 || isV2 || isV3);
+  var skip     = SHOW_ONCE && (function () { try { return sessionStorage.getItem(NAV_KEY) === "1"; } catch (e) { return false; } })();
+  try { sessionStorage.removeItem(NAV_KEY); } catch (e) {}   // consume it: a later RELOAD has no flag → plays
+  var willRun  = !!window.gsap && !reduced && !skip && (isV1 || isV2 || isV3);
+
+  // Skip the intro when moving BETWEEN version pages (a left-click on a version switcher);
+  // reload / first visit / typed URL leave no flag, so the intro still plays there. Attached
+  // unconditionally (scripts load at end of <body>, so a.nav__version is in the DOM).
+  Array.prototype.forEach.call(document.querySelectorAll("a.nav__version"), function (a) {
+    a.addEventListener("click", function (e) {
+      if (e.button === 0 && !e.metaKey && !e.ctrlKey && !e.shiftKey) {
+        try { sessionStorage.setItem(NAV_KEY, "1"); } catch (err) {}
+      }
+    });
+  });
 
   /* ------------------------------------------------------------------- contract */
   var resolveReveal, resolveDone;
@@ -135,9 +147,9 @@
   stage.className = "pl-stage";
 
   // Deck (built back-to-front in DOM so the front card sits on top via z-index).
-  // Each card carries the hero's dark scrim from spawn, so the deck photos read
-  // already-darkened (matches the live hero; the front card keeps it through the fill).
-  var SCRIM_OP = isV1 ? 0.40 : 0.25;             // V1 rgba(2,2,8,.4) / V2 #020208 @ .25
+  // Only V1 darkens its photos, so only V1 deck cards carry a scrim (matches the live
+  // V1 hero). V2/V3 photos are full-brightness, so their deck cards stay bright too.
+  var SCRIM_OP = 0.40;                            // V1 only: rgba(2,2,8,.4)
   var deck = document.createElement("div");
   deck.className = "pl-deck";
   var frontW = Math.max(170, Math.min(window.innerWidth * 0.172, 260));   // 248/1440 ≈ 17.2%
@@ -152,10 +164,10 @@
     var img = document.createElement("img");
     img.src = HERO_IMG; img.alt = "";
     card.appendChild(img);
-    // Per-card scrim, present from spawn. V3: only the front card (i=0) keeps it —
-    // the cards behind read at full brightness; the front card's scrim still
-    // matches the live hero so the fill→hero handoff stays seamless.
-    if (!isV3 || i === 0) {
+    // Per-card scrim, present from spawn — V1 only (its live hero is darkened). V2/V3
+    // cards stay full-brightness, matching their bright live heroes, so the fill→hero
+    // handoff stays seamless.
+    if (isV1) {
       var cardScrim = document.createElement("div");
       cardScrim.style.cssText = "position:absolute;inset:0;background:#020208;opacity:" + SCRIM_OP + ";pointer-events:none;";
       card.appendChild(cardScrim);
@@ -251,14 +263,22 @@
       var titleEls, sec;
       if (isV1) {
         sec = document.querySelector(".hero--v1");                       // section 1 (current)
-        titleEls = toArr(sec.querySelectorAll(".ln-in")).concat(toArr(sec.querySelectorAll(".num-in")));
+        titleEls = toArr(sec.querySelectorAll(".ln-in"))
+                     .concat(toArr(sec.querySelectorAll(".num-in")))
+                     .concat(toArr(sec.querySelectorAll(".cnt-rest-in")));   // " / 04" pops in too
       } else {
         sec = document.querySelector('.hero--v2[data-state="1"]');       // MOL section (keeps its titlerow)
         titleEls = toArr(sec.querySelectorAll(".hero__title .v2-ch"))
-                     .concat(toArr(sec.querySelectorAll(".hero__counter .v2-num .v2-ch")));
+                     .concat(toArr(sec.querySelectorAll(".hero__counter .v2-ch")));   // whole counter ("01" + " / 04")
+        // Every V2 section has its own fixed titlerow, so 4 identical " / 04" totals overlap.
+        // Hide them ALL; only `sec`'s is in titleEls and pops back in — so one " / 04" reveals
+        // instead of one popping over three static copies. (clones have no titlerow.)
+        gsap.set(document.querySelectorAll(".hero--v2 .cnt-rest .v2-ch"), { yPercent: 100, force3D: false });
       }
-      // Hide the headline under its clip mask, then reveal all titlerows (the static " / 04" can show).
-      if (titleEls.length) gsap.set(titleEls, { yPercent: 100 });
+      // Hide the headline + whole counter under their clip masks, then reveal all titlerows.
+      // force3D:false everywhere here (see main.js): the default "auto" leaves a translate3d
+      // GPU layer on the chars, anti-aliasing the rolled number lighter than the static " / 04".
+      if (titleEls.length) gsap.set(titleEls, { yPercent: 100, force3D: false });
       gsap.set(document.querySelectorAll(".hero__titlerow"), { opacity: 1 });
 
       // Remove the overlay — its full-bleed photo + scrim already match the real hero, so it's invisible.
@@ -272,7 +292,7 @@
       var rt = gsap.timeline({ onComplete: handoff });
       rt.to(".nav__logo", { opacity: 1, duration: REVEAL * 0.32, ease: "none" }, 0);
       if (titleEls.length) {
-        rt.to(titleEls, { yPercent: 0, duration: REVEAL * 0.42, stagger: REVEAL_STAGGER, ease: EASE }, REVEAL * 0.1);
+        rt.to(titleEls, { yPercent: 0, duration: REVEAL * 0.42, stagger: REVEAL_STAGGER, ease: EASE, force3D: false }, REVEAL * 0.1);
       }
       rt.to(last, { opacity: 1, duration: REVEAL * 0.36, ease: "none" }, REVEAL * 0.55);
     });
@@ -286,7 +306,6 @@
               ".hero__titlerow", ".hero--v1 .hero__window"], { clearProps: "opacity" });
     window.FC_INTRO.active = false;
     unlockScroll();
-    try { sessionStorage.setItem(SEEN_KEY, "1"); } catch (e) {}
     resolveDone();   // V2: start Lenis
   }
 
